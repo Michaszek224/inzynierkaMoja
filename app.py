@@ -200,24 +200,40 @@ def add_rule():
         flash(f'Failed to apply rules: {message}', 'error')
     return redirect(url_for('index'))
 
+# app.py
+
 @app.route('/delete_rule', methods=['POST'])
 def delete_rule():
-    rule_to_delete_str = request.form.get('rule_json')
+    # Get the index from the form data
+    rule_index_str = request.form.get('rule_index')
+
     try:
-        rule_to_delete = json.loads(rule_to_delete_str)
+        # Convert the index string to an integer
+        rule_index = int(rule_index_str)
+        
         config = get_rules_from_file()
-        if rule_to_delete in config.get('rules', []):
-            config['rules'].remove(rule_to_delete)
+        rules_list = config.get('rules', [])
+
+        # Check if the index is valid
+        if 0 <= rule_index < len(rules_list):
+            # Use pop() to remove the rule at the specific index
+            rules_list.pop(rule_index) 
+            config['rules'] = rules_list # Update the list in config (optional, pop modifies in place)
+            
             save_rules_to_file(config)
+            
             success, message = apply_rules_to_iptables()
             if success:
                 flash('Rule deleted and firewall updated successfully!', 'success')
             else:
                 flash(f'Failed to apply rules: {message}', 'error')
         else:
-            flash('Could not find the specified rule to delete.', 'warning')
-    except (json.JSONDecodeError, KeyError, TypeError):
-        flash('Invalid request to delete rule.', 'error')
+            flash('Invalid rule index provided.', 'warning')
+            
+    except (ValueError, KeyError, TypeError) as e:
+        # Catches errors if rule_index_str is not an integer or other errors
+        flash(f'Invalid request to delete rule: {e}', 'error')
+        
     return redirect(url_for('index'))
 
 if __name__ == '__main__':

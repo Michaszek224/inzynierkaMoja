@@ -12,10 +12,6 @@
             "source": "127.0.0.1",
             "destination": "127.0.0.1",
             "target": "ACCEPT"
-        },
-        {
-            "chain": "INPUT",
-            "target": "ACCEPT"
         }
     ]
 }
