@@ -4,9 +4,18 @@ docker build -t firewall-app .
 
 # docker run
 
-docker run \
-    --name firewall-control \
-    -p 5000:5000 \
-    --cap-add=NET_ADMIN \
-    -v "$(pwd)/firewall_rules.json":/app/firewall_rules.json \
-    firewall-app
+docker run --rm -it \
+  --name firewall-app \
+  --privileged \
+  --cap-add=NET_ADMIN \
+  --network=host \
+  -v "$(pwd)/firewall_rules.json:/app/firewall_rules.json" \
+  firewall-app
+
+# usage
+
+localhost:5000
+
+# UWAGAGAGAGAGA
+
+mozna sobie rozwalic system uzywac z rozwagą

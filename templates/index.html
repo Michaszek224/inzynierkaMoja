@@ -11,6 +11,9 @@
         body {
             font-family: 'Inter', sans-serif;
         }
+        input[type="text"], select {
+            border: 1px solid #d1d5db;
+        }
     </style>
 </head>
 
@@ -18,7 +21,7 @@
 
     <div class="container mx-auto p-4 md:p-8">
         <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-2">Firewall Control Panel</h1>
-        <p class="text-gray-600 mb-8">A web interface for managing `iptables` rules on this host.</p>
+        <p class="text-gray-600 mb-8">A web interface for managing iptables rules on this host.</p>
 
         <!-- Flash Messages -->
         {% with messages = get_flashed_messages(with_categories=true) %}
@@ -43,7 +46,7 @@
                 <div>
                     <label for="chain" class="block text-sm font-medium text-gray-700">Chain *</label>
                     <select id="chain" name="chain" required
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2">
                         <option>INPUT</option>
                         <option>OUTPUT</option>
                         <option>FORWARD</option>
@@ -55,19 +58,19 @@
                 <div>
                     <label for="source" class="block text-sm font-medium text-gray-700">Source IP/CIDR</label>
                     <input type="text" id="source" name="source" placeholder="e.g., 192.168.1.100"
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2">
                 </div>
 
                 <div>
                     <label for="destination" class="block text-sm font-medium text-gray-700">Destination IP/CIDR</label>
                     <input type="text" id="destination" name="destination" placeholder="e.g., 8.8.8.8"
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2">
                 </div>
 
                 <div>
                     <label for="protocol" class="block text-sm font-medium text-gray-700">Protocol</label>
                     <select id="protocol" name="protocol"
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2">
                         <option value="">Any</option>
                         <option value="tcp">TCP</option>
                         <option value="udp">UDP</option>
@@ -78,19 +81,19 @@
                 <div>
                     <label for="sport" class="block text-sm font-medium text-gray-700">Source Port</label>
                     <input type="text" id="sport" name="sport" placeholder="e.g., 8080"
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2">
                 </div>
 
                 <div>
                     <label for="dport" class="block text-sm font-medium text-gray-700">Destination Port</label>
                     <input type="text" id="dport" name="dport" placeholder="e.g., 443"
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2">
                 </div>
 
                 <div>
                     <label for="target" class="block text-sm font-medium text-gray-700">Target *</label>
                     <select id="target" name="target" required
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2">
                         <option>ACCEPT</option>
                         <option>DROP</option>
                         <option>REJECT</option>

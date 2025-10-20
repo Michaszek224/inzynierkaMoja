@@ -1,17 +1,4 @@
 {
     "chains": [],
-    "rules": [
-        {
-            "chain": "INPUT",
-            "source": "127.0.0.1",
-            "destination": "127.0.0.1",
-            "target": "ACCEPT"
-        },
-        {
-            "chain": "OUTPUT",
-            "source": "127.0.0.1",
-            "destination": "127.0.0.1",
-            "target": "ACCEPT"
-        }
-    ]
+    "rules": []
 }
