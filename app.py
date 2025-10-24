@@ -3,7 +3,8 @@ import json
 import logging
 import time
 import iptc
-from flask import Flask, render_template, request, redirect, url_for, flash
+import subprocess
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -13,7 +14,6 @@ app.secret_key = os.urandom(24)
 RULES_FILE = "firewall_rules.json"
 
 def get_rules_from_file():
-    """Reads firewall rules from the JSON file."""
     if not os.path.exists(RULES_FILE):
         return {"chains": [], "rules": []}
     try:
@@ -33,7 +33,6 @@ def save_rules_to_file(data):
         logging.error(f"Could not save rules to file: {e}")
 
 def build_and_insert_rule(chain, rule_def):
-    """Builds a single iptc.Rule object and inserts it into the given chain."""
     rule = iptc.Rule()
 
     if rule_def.get("source"):
@@ -62,11 +61,6 @@ def build_and_insert_rule(chain, rule_def):
     logging.info(f"Inserted rule into chain '{chain.name}': {rule_def}")
 
 def apply_rules_to_iptables():
-    """
-    Applies the rules from the configuration file to iptables.
-    This function flushes existing rules and rebuilds them.
-    Returns (success: bool, message: str)
-    """
     logging.info("Applying iptables rules from configuration file...")
     
     max_retries = 5
@@ -141,10 +135,151 @@ def apply_rules_to_iptables():
     
     return False, "Failed after maximum retries due to iptables lock"
 
+def get_active_connections():
+    connections = []
+    
+    commands_to_try = [
+        (['ss', '-tuna'], 'ss'),
+        (['netstat', '-tuna'], 'netstat'),
+        (['netstat', '-an'], 'netstat-simple')
+    ]
+    
+    for cmd, cmd_type in commands_to_try:
+        try:
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=5
+            )
+            
+            if result.returncode == 0:
+                lines = result.stdout.strip().split('\n')
+                logging.info(f"{cmd[0]} command returned {len(lines)} lines")
+                
+                if cmd_type == 'ss':
+                    connections = parse_ss_output(lines)
+                elif cmd_type.startswith('netstat'):
+                    connections = parse_netstat_output(lines)
+                
+                if connections:
+                    logging.info(f"Successfully parsed {len(connections)} connections using {cmd[0]}")
+                    return connections
+            else:
+                logging.debug(f"{cmd[0]} command failed with return code {result.returncode}")
+                
+        except FileNotFoundError:
+            logging.debug(f"{cmd[0]} command not found, trying next option")
+            continue
+        except subprocess.TimeoutExpired:
+            logging.warning(f"Timeout while executing {cmd[0]}")
+            continue
+        except Exception as e:
+            logging.debug(f"Error with {cmd[0]}: {e}")
+            continue
+    
+    logging.error("No suitable command found to fetch connections (tried ss and netstat)")
+    return connections
+
+def parse_ss_output(lines):
+    """Parse ss command output"""
+    connections = []
+    for i, line in enumerate(lines[1:], 1):
+        line = line.strip()
+        if not line:
+            continue
+            
+        parts = line.split()
+        if len(parts) >= 5:
+            try:
+                conn = {
+                    'protocol': parts[0].upper(),
+                    'state': parts[1] if len(parts) > 1 else '-',
+                    'recv_q': parts[2] if len(parts) > 2 else '0',
+                    'send_q': parts[3] if len(parts) > 3 else '0',
+                    'local': parts[4] if len(parts) > 4 else '-',
+                    'remote': parts[5] if len(parts) > 5 else '-',
+                    'process': ' '.join(parts[6:]) if len(parts) > 6 else '-'
+                }
+                connections.append(conn)
+            except Exception as e:
+                logging.debug(f"Error parsing ss line {i}: {e}")
+    return connections
+
+def parse_netstat_output(lines):
+    connections = []
+    for i, line in enumerate(lines):
+        line = line.strip()
+        if not line or line.startswith('Active') or line.startswith('Proto'):
+            continue
+            
+        parts = line.split()
+        if len(parts) >= 5:
+            try:
+                protocol = parts[0].upper()
+                
+                if not protocol.startswith('TCP') and not protocol.startswith('UDP'):
+                    continue
+                
+                conn = {
+                    'protocol': protocol,
+                    'recv_q': parts[1] if len(parts) > 1 else '0',
+                    'send_q': parts[2] if len(parts) > 2 else '0',
+                    'local': parts[3] if len(parts) > 3 else '-',
+                    'remote': parts[4] if len(parts) > 4 else '-',
+                    'state': parts[5] if len(parts) > 5 else 'UNKNOWN',
+                    'process': parts[6] if len(parts) > 6 else '-'
+                }
+                connections.append(conn)
+            except Exception as e:
+                logging.debug(f"Error parsing netstat line {i}: {e}")
+    return connections
+
+def get_connection_stats():
+    commands_to_try = [
+        (['ss', '-s'], 'ss'),
+        (['netstat', '-s'], 'netstat')
+    ]
+    
+    for cmd, cmd_type in commands_to_try:
+        try:
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=5
+            )
+            
+            if result.returncode == 0:
+                return result.stdout
+        except FileNotFoundError:
+            continue
+        except Exception as e:
+            logging.debug(f"Error fetching stats with {cmd[0]}: {e}")
+            continue
+    
+    return "Statistics unavailable (neither ss nor netstat found)"
+
 @app.route('/')
 def index():
     config = get_rules_from_file()
-    return render_template('index.html', rules=config.get('rules', []), chains=config.get('chains', []))
+    return render_template('index.html', 
+                         rules=config.get('rules', []), 
+                         chains=config.get('chains', []))
+
+@app.route('/connections')
+def connections():
+    return render_template('connections.html')
+
+@app.route('/api/connections')
+def api_connections():
+    connections = get_active_connections()
+    stats = get_connection_stats()
+    return jsonify({
+        'connections': connections,
+        'stats': stats,
+        'count': len(connections)
+    })
 
 @app.route('/add_rule', methods=['GET', 'POST'])
 def add_rule():

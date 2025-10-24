@@ -19,9 +19,30 @@
 
 <body class="bg-gray-100 text-gray-800">
 
+    <!-- Navigation -->
+    <nav class="bg-white shadow-sm mb-6">
+        <div class="container mx-auto px-4 md:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center space-x-8">
+                    <h1 class="text-xl font-bold text-gray-900">Firewall Manager</h1>
+                    <div class="flex space-x-4">
+                        <a href="{{ url_for('index') }}" class="px-3 py-2 rounded-md text-sm font-medium bg-indigo-100 text-indigo-700">
+                            Rules
+                        </a>
+                        <a href="{{ url_for('connections') }}" class="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-100">
+                            Connections
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
     <div class="container mx-auto p-4 md:p-8">
-        <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-2">Firewall Control Panel</h1>
-        <p class="text-gray-600 mb-8">A web interface for managing iptables rules on this host.</p>
+        <div class="mb-6">
+            <h2 class="text-3xl font-bold text-gray-900 mb-2">Firewall Rules</h2>
+            <p class="text-gray-600">Manage iptables rules on this host</p>
+        </div>
 
         <!-- Flash Messages -->
         {% with messages = get_flashed_messages(with_categories=true) %}
@@ -174,6 +195,7 @@
             </div>
         </div>
     </div>
+    
 </body>
 
 </html>
