@@ -11,6 +11,7 @@ RUN apt-get update && apt-get install -y \
     libxtables-dev \
     pkg-config \
     iproute2 \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

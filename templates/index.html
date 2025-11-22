@@ -38,6 +38,18 @@
                         </a>
                     </div>
                 </div>
+                <div class="flex items-center space-x-4">
+                    <span class="text-sm text-gray-600">
+                        👤 <span class="font-medium">{{ current_user.username }}</span>
+                    </span>
+                    <a href="{{ url_for('change_password') }}" class="text-sm text-gray-600 hover:text-gray-900">
+                        Change Password
+                    </a>
+                    <a href="{{ url_for('logout') }}"
+                        class="px-3 py-2 text-sm font-medium text-red-600 hover:text-red-800 hover:bg-red-50 rounded-md">
+                        Logout
+                    </a>
+                </div>
             </div>
         </div>
     </nav>
@@ -54,17 +66,108 @@
         <div class="mb-6 space-y-3">
             {% for category, message in messages %}
             <div
-                class="p-4 rounded-md text-sm {% if category == 'error' %} bg-red-100 text-red-800 {% elif category == 'success' %} bg-green-100 text-green-800 {% else %} bg-blue-100 text-blue-800 {% endif %}">
-                {{ message }}
+                class="p-4 rounded-md text-sm flex items-start {% if category == 'error' %} bg-red-100 text-red-800 {% elif category == 'success' %} bg-green-100 text-green-800 {% else %} bg-blue-100 text-blue-800 {% endif %}">
+                <span class="mr-2">
+                    {% if category == 'error' %}⚠️
+                    {% elif category == 'success' %}✅
+                    {% else %}ℹ️
+                    {% endif %}
+                </span>
+                <span>{{ message }}</span>
             </div>
             {% endfor %}
         </div>
         {% endif %}
         {% endwith %}
 
+        <!-- Default Policies Section -->
+        <div
+            class="bg-gradient-to-r from-purple-50 to-indigo-50 p-6 rounded-lg shadow-md mb-8 border border-purple-200">
+            <h2 class="text-2xl font-semibold mb-4 text-purple-900">🛡️ Default Chain Policies</h2>
+            <p class="text-sm text-gray-600 mb-4">Set the default action for packets that don't match any rules.
+                <strong>DROP</strong> is recommended for security.
+            </p>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <!-- INPUT Policy -->
+                <div class="bg-white p-4 rounded-lg shadow">
+                    <h3 class="font-semibold text-gray-800 mb-3">INPUT Chain</h3>
+                    <p class="text-xs text-gray-500 mb-3">Incoming packets to this host</p>
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm">Current:
+                            <span
+                                class="font-bold px-2 py-1 rounded {% if policies.get('INPUT') == 'DROP' %}bg-red-100 text-red-800{% else %}bg-green-100 text-green-800{% endif %}">
+                                {{ policies.get('INPUT', 'DROP') }}
+                            </span>
+                        </span>
+                        <form action="{{ url_for('set_policy') }}" method="POST" class="inline">
+                            <input type="hidden" name="chain" value="INPUT">
+                            <select name="policy" class="text-sm border rounded p-1" onchange="this.form.submit()">
+                                <option value="ACCEPT" {% if policies.get('INPUT')=='ACCEPT' %}selected{% endif %}>
+                                    ACCEPT</option>
+                                <option value="DROP" {% if policies.get('INPUT') !='ACCEPT' %}selected{% endif %}>DROP
+                                </option>
+                            </select>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- OUTPUT Policy -->
+                <div class="bg-white p-4 rounded-lg shadow">
+                    <h3 class="font-semibold text-gray-800 mb-3">OUTPUT Chain</h3>
+                    <p class="text-xs text-gray-500 mb-3">Outgoing packets from this host</p>
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm">Current:
+                            <span
+                                class="font-bold px-2 py-1 rounded {% if policies.get('OUTPUT') == 'DROP' %}bg-red-100 text-red-800{% else %}bg-green-100 text-green-800{% endif %}">
+                                {{ policies.get('OUTPUT', 'ACCEPT') }}
+                            </span>
+                        </span>
+                        <form action="{{ url_for('set_policy') }}" method="POST" class="inline">
+                            <input type="hidden" name="chain" value="OUTPUT">
+                            <select name="policy" class="text-sm border rounded p-1" onchange="this.form.submit()">
+                                <option value="ACCEPT" {% if policies.get('OUTPUT') !='DROP' %}selected{% endif %}>
+                                    ACCEPT</option>
+                                <option value="DROP" {% if policies.get('OUTPUT')=='DROP' %}selected{% endif %}>DROP
+                                </option>
+                            </select>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- FORWARD Policy -->
+                <div class="bg-white p-4 rounded-lg shadow">
+                    <h3 class="font-semibold text-gray-800 mb-3">FORWARD Chain</h3>
+                    <p class="text-xs text-gray-500 mb-3">Packets routed through this host</p>
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm">Current:
+                            <span
+                                class="font-bold px-2 py-1 rounded {% if policies.get('FORWARD') == 'DROP' %}bg-red-100 text-red-800{% else %}bg-green-100 text-green-800{% endif %}">
+                                {{ policies.get('FORWARD', 'DROP') }}
+                            </span>
+                        </span>
+                        <form action="{{ url_for('set_policy') }}" method="POST" class="inline">
+                            <input type="hidden" name="chain" value="FORWARD">
+                            <select name="policy" class="text-sm border rounded p-1" onchange="this.form.submit()">
+                                <option value="ACCEPT" {% if policies.get('FORWARD')=='ACCEPT' %}selected{% endif %}>
+                                    ACCEPT</option>
+                                <option value="DROP" {% if policies.get('FORWARD') !='ACCEPT' %}selected{% endif %}>DROP
+                                </option>
+                            </select>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-800">
+                <strong>⚠️ Note:</strong> Stateful firewall rules (ESTABLISHED, RELATED connections) are automatically
+                applied before your custom rules.
+            </div>
+        </div>
+
         <!-- Add Rule Form -->
         <div class="bg-white p-6 rounded-lg shadow-md mb-8">
-            <h2 class="text-2xl font-semibold mb-4">Add a New Rule</h2>
+            <h2 class="text-2xl font-semibold mb-4">➕ Add a New Rule</h2>
             <form action="{{ url_for('add_rule') }}" method="POST"
                 class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
 
@@ -82,14 +185,16 @@
 
                 <div>
                     <label for="source" class="block text-sm font-medium text-gray-700">Source IP/CIDR</label>
-                    <input type="text" id="source" name="source" placeholder="e.g., 192.168.1.100"
+                    <input type="text" id="source" name="source" placeholder="e.g., 192.168.1.0/24"
                         class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2">
+                    <p class="text-xs text-gray-500 mt-1">Leave empty for any</p>
                 </div>
 
                 <div>
                     <label for="destination" class="block text-sm font-medium text-gray-700">Destination IP/CIDR</label>
                     <input type="text" id="destination" name="destination" placeholder="e.g., 8.8.8.8"
                         class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2">
+                    <p class="text-xs text-gray-500 mt-1">Leave empty for any</p>
                 </div>
 
                 <div>
@@ -105,41 +210,50 @@
 
                 <div>
                     <label for="sport" class="block text-sm font-medium text-gray-700">Source Port</label>
-                    <input type="text" id="sport" name="sport" placeholder="e.g., 8080"
+                    <input type="text" id="sport" name="sport" placeholder="e.g., 8080 or 1024:2048"
                         class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2">
+                    <p class="text-xs text-gray-500 mt-1">Single or range</p>
                 </div>
 
                 <div>
                     <label for="dport" class="block text-sm font-medium text-gray-700">Destination Port</label>
-                    <input type="text" id="dport" name="dport" placeholder="e.g., 443"
+                    <input type="text" id="dport" name="dport" placeholder="e.g., 443 or 80:443"
                         class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2">
+                    <p class="text-xs text-gray-500 mt-1">Single or range</p>
                 </div>
 
                 <div>
                     <label for="target" class="block text-sm font-medium text-gray-700">Target *</label>
                     <select id="target" name="target" required
                         class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2">
-                        <option>ACCEPT</option>
-                        <option>DROP</option>
-                        <option>REJECT</option>
+                        <option value="ACCEPT">ACCEPT</option>
+                        <option value="DROP">DROP</option>
+                        <option value="REJECT">REJECT</option>
+                        <option value="LOG">LOG</option>
                     </select>
                 </div>
 
                 <div class="flex items-end">
                     <button type="submit"
-                        class="w-full bg-indigo-600 text-white py-2 px-4 rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">Add
-                        Rule</button>
+                        class="w-full bg-indigo-600 text-white py-2 px-4 rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 font-medium">
+                        ➕ Add Rule
+                    </button>
                 </div>
             </form>
         </div>
 
         <!-- Current Rules Table -->
         <div class="bg-white p-6 rounded-lg shadow-md">
-            <h2 class="text-2xl font-semibold mb-4">Current Firewall Rules</h2>
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-2xl font-semibold">📋 Current Firewall Rules</h2>
+                <span class="text-sm text-gray-500">{{ rules|length }} rule(s) defined</span>
+            </div>
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50">
                         <tr>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#
+                            </th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 Chain</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -159,36 +273,61 @@
                     <tbody class="bg-white divide-y divide-gray-200">
                         {% if not rules %}
                         <tr>
-                            <td colspan="7" class="px-4 py-4 text-center text-gray-500">No rules defined in
-                                configuration.</td>
+                            <td colspan="8" class="px-4 py-8 text-center text-gray-500">
+                                <div class="flex flex-col items-center">
+                                    <svg class="w-12 h-12 text-gray-400 mb-2" fill="none" stroke="currentColor"
+                                        viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                                        </path>
+                                    </svg>
+                                    <p class="font-medium">No custom rules defined</p>
+                                    <p class="text-sm">Only stateful firewall rules are active</p>
+                                </div>
+                            </td>
                         </tr>
                         {% else %}
                         {% for rule in rules %}
-                        <tr>
-                            <td class="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ rule.chain }}
+                        <tr class="hover:bg-gray-50 transition-colors">
+                            <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">{{ loop.index }}</td>
+                            <td class="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                <span class="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs font-semibold">{{
+                                    rule.chain }}</span>
                             </td>
-                            <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">{{ rule.source or '-' }}</td>
-                            <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">{{ rule.destination or '-' }}
-                            </td>
-                            <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">{{ rule.protocol or '-' }}
-                            </td>
+                            <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-700 font-mono">{{ rule.source or
+                                '0.0.0.0/0' }}</td>
+                            <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-700 font-mono">{{ rule.destination
+                                or '0.0.0.0/0' }}</td>
                             <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {{ rule.protocol|upper if rule.protocol else 'ALL' }}
+                            </td>
+                            <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500 font-mono">
                                 {% if rule.sport or rule.dport %}
-                                S:{{ rule.sport or '*' }} &rarr; D:{{ rule.dport or '*' }}
+                                <span class="text-xs">
+                                    S:{{ rule.sport or '*' }} → D:{{ rule.dport or '*' }}
+                                </span>
                                 {% else %}
-                                -
+                                <span class="text-gray-400">-</span>
                                 {% endif %}
                             </td>
-                            <td class="px-4 py-4 whitespace-nowrap text-sm font-bold 
-                                {% if rule.target == 'ACCEPT' %}text-green-600
-                                {% elif rule.target == 'DROP' %}text-red-600
-                                {% elif rule.target == 'REJECT' %}text-yellow-600
-                                {% endif %}">{{ rule.target }}</td>
+                            <td class="px-4 py-4 whitespace-nowrap text-sm">
+                                <span class="px-2 py-1 rounded font-bold text-xs
+                                    {% if rule.target == 'ACCEPT' %}bg-green-100 text-green-800
+                                    {% elif rule.target == 'DROP' %}bg-red-100 text-red-800
+                                    {% elif rule.target == 'REJECT' %}bg-orange-100 text-orange-800
+                                    {% elif rule.target == 'LOG' %}bg-purple-100 text-purple-800
+                                    {% endif %}">
+                                    {{ rule.target }}
+                                </span>
+                            </td>
                             <td class="px-4 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                <form action="{{ url_for('delete_rule') }}" method="POST"
-                                    onsubmit="return confirm('Are you sure you want to delete this rule?');">
+                                <form action="{{ url_for('delete_rule') }}" method="POST" class="inline"
+                                    onsubmit="return confirm('⚠️ Are you sure you want to delete this rule?\n\nChain: {{ rule.chain }}\nTarget: {{ rule.target }}');">
                                     <input type="hidden" name="rule_index" value="{{ loop.index0 }}">
-                                    <button type="submit" class="text-red-600 hover:text-red-900">Delete</button>
+                                    <button type="submit"
+                                        class="text-red-600 hover:text-red-900 hover:bg-red-50 px-3 py-1 rounded transition-colors">
+                                        🗑️ Delete
+                                    </button>
                                 </form>
                             </td>
                         </tr>
@@ -197,6 +336,19 @@
                     </tbody>
                 </table>
             </div>
+        </div>
+
+        <!-- Help Section -->
+        <div class="mt-8 bg-blue-50 border border-blue-200 p-6 rounded-lg">
+            <h3 class="font-semibold text-blue-900 mb-3">💡 Quick Tips</h3>
+            <ul class="text-sm text-blue-800 space-y-2">
+                <li>• <strong>Stateful rules</strong> are automatically applied: ESTABLISHED/RELATED connections are
+                    accepted, INVALID packets are dropped</li>
+                <li>• Rules are evaluated in order. More specific rules should come before general ones</li>
+                <li>• Use <strong>CIDR notation</strong> for IP ranges: 192.168.1.0/24 matches 192.168.1.0-255</li>
+                <li>• Port ranges use colon: <code class="bg-white px-1 rounded">1024:2048</code></li>
+                <li>• A backup is automatically created before each change</li>
+            </ul>
         </div>
     </div>
 
