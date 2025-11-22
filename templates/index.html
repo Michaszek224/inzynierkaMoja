@@ -11,7 +11,9 @@
         body {
             font-family: 'Inter', sans-serif;
         }
-        input[type="text"], select {
+
+        input[type="text"],
+        select {
             border: 1px solid #d1d5db;
         }
     </style>
@@ -26,10 +28,12 @@
                 <div class="flex items-center space-x-8">
                     <h1 class="text-xl font-bold text-gray-900">Firewall Manager</h1>
                     <div class="flex space-x-4">
-                        <a href="{{ url_for('index') }}" class="px-3 py-2 rounded-md text-sm font-medium bg-indigo-100 text-indigo-700">
+                        <a href="{{ url_for('index') }}"
+                            class="px-3 py-2 rounded-md text-sm font-medium bg-indigo-100 text-indigo-700">
                             Rules
                         </a>
-                        <a href="{{ url_for('connections') }}" class="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-100">
+                        <a href="{{ url_for('connections') }}"
+                            class="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-100">
                             Connections
                         </a>
                     </div>
@@ -195,7 +199,7 @@
             </div>
         </div>
     </div>
-    
+
 </body>
 
 </html>

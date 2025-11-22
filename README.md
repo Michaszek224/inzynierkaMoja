@@ -10,6 +10,7 @@ docker run --rm -it \
   --cap-add=NET_ADMIN \
   --network=host \
   -v "$(pwd)/firewall_rules.json:/app/firewall_rules.json" \
+  -v "$(pwd):/app" \
   firewall-app
 
 # usage
