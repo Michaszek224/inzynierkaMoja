@@ -1,8 +1,10 @@
-# docker build
+# Firewall V.2.1
+
+## docker build
 ```
 docker build -t firewall-app .
 ```
-# docker run
+## docker run
 ```
 docker run --rm -it \
   --name firewall-app \
@@ -13,11 +15,11 @@ docker run --rm -it \
   -v "$(pwd):/app" \
   firewall-app
 ```
-# usage
+## usage
 
 localhost:5000
 
-# UWAGAGAGAGAGA
+## UWAGAGAGAGAGA
 
 mozna sobie rozwalic system uzywac z rozwagą
 
