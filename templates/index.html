@@ -83,7 +83,7 @@
         <!-- Default Policies Section -->
         <div
             class="bg-gradient-to-r from-purple-50 to-indigo-50 p-6 rounded-lg shadow-md mb-8 border border-purple-200">
-            <h2 class="text-2xl font-semibold mb-4 text-purple-900">🛡️ Default Chain Policies</h2>
+            <h2 class="text-2xl font-semibold mb-4 text-purple-900">Default Chain Policies</h2>
             <p class="text-sm text-gray-600 mb-4">Set the default action for packets that don't match any rules.
                 <strong>DROP</strong> is recommended for security.
             </p>
@@ -167,7 +167,7 @@
 
         <!-- Add Rule Form -->
         <div class="bg-white p-6 rounded-lg shadow-md mb-8">
-            <h2 class="text-2xl font-semibold mb-4">➕ Add a New Rule</h2>
+            <h2 class="text-2xl font-semibold mb-4">Add a New Rule</h2>
             <form action="{{ url_for('add_rule') }}" method="POST"
                 class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
 
@@ -236,7 +236,7 @@
                 <div class="flex items-end">
                     <button type="submit"
                         class="w-full bg-indigo-600 text-white py-2 px-4 rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 font-medium">
-                        ➕ Add Rule
+                        Add Rule
                     </button>
                 </div>
             </form>
@@ -245,7 +245,7 @@
         <!-- Current Rules Table -->
         <div class="bg-white p-6 rounded-lg shadow-md">
             <div class="flex items-center justify-between mb-4">
-                <h2 class="text-2xl font-semibold">📋 Current Firewall Rules</h2>
+                <h2 class="text-2xl font-semibold">Current Firewall Rules</h2>
                 <span class="text-sm text-gray-500">{{ rules|length }} rule(s) defined</span>
             </div>
             <div class="overflow-x-auto">
@@ -326,7 +326,7 @@
                                     <input type="hidden" name="rule_index" value="{{ loop.index0 }}">
                                     <button type="submit"
                                         class="text-red-600 hover:text-red-900 hover:bg-red-50 px-3 py-1 rounded transition-colors">
-                                        🗑️ Delete
+                                        Delete
                                     </button>
                                 </form>
                             </td>
