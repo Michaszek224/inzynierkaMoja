@@ -1,4 +1,5 @@
-# czesc komentarzy pisane prez llm
+# comments are made by my friend llm
+
 import os
 import json
 import logging
@@ -21,7 +22,6 @@ RULES_FILE = "firewall_rules.json"
 USERS_FILE = "users.json"
 BACKUP_DIR = "backups"
 
-# czy istnieja backupy
 os.makedirs(BACKUP_DIR, exist_ok=True)
 
 # ============================================================================
@@ -48,6 +48,7 @@ def load_user(username):
 def get_users():
     """Load users from file"""
     if not os.path.exists(USERS_FILE):
+        # Create default admin user (password: admin123)
         default_users = {
             "admin": generate_password_hash("admin123")
         }
@@ -249,10 +250,116 @@ def create_backup():
             import shutil
             shutil.copy(RULES_FILE, backup_file)
             logging.info(f"Created backup: {backup_file}")
+            
+            # Clean old backups (keep only last 5)
+            cleanup_old_backups()
+            
             return True, backup_file
         return False, "No rules file to backup"
     except Exception as e:
         logging.error(f"Backup failed: {e}")
+        return False, str(e)
+
+def cleanup_old_backups(max_backups=5):
+    """Keep only the most recent backups, delete older ones"""
+    try:
+        if not os.path.exists(BACKUP_DIR):
+            return
+        
+        # Get all backup files
+        backups = []
+        for filename in os.listdir(BACKUP_DIR):
+            if filename.startswith('firewall_backup_') and filename.endswith('.json'):
+                filepath = os.path.join(BACKUP_DIR, filename)
+                backups.append((filepath, os.path.getmtime(filepath)))
+        
+        # Sort by modification time (newest first)
+        backups.sort(key=lambda x: x[1], reverse=True)
+        
+        # Delete old backups (keep only max_backups)
+        if len(backups) > max_backups:
+            for filepath, _ in backups[max_backups:]:
+                os.remove(filepath)
+                logging.info(f"Deleted old backup: {filepath}")
+    except Exception as e:
+        logging.error(f"Cleanup backups failed: {e}")
+
+def get_available_backups():
+    """Get list of available backups sorted by date (newest first)"""
+    try:
+        if not os.path.exists(BACKUP_DIR):
+            return []
+        
+        backups = []
+        for filename in os.listdir(BACKUP_DIR):
+            if filename.startswith('firewall_backup_') and filename.endswith('.json'):
+                filepath = os.path.join(BACKUP_DIR, filename)
+                mtime = os.path.getmtime(filepath)
+                
+                # Parse timestamp from filename
+                try:
+                    timestamp_str = filename.replace('firewall_backup_', '').replace('.json', '')
+                    timestamp = datetime.strptime(timestamp_str, '%Y%m%d_%H%M%S')
+                    formatted_date = timestamp.strftime('%Y-%m-%d %H:%M:%S')
+                except:
+                    formatted_date = datetime.fromtimestamp(mtime).strftime('%Y-%m-%d %H:%M:%S')
+                
+                # Get file size
+                size = os.path.getsize(filepath)
+                size_kb = size / 1024
+                
+                backups.append({
+                    'filename': filename,
+                    'filepath': filepath,
+                    'date': formatted_date,
+                    'size': f"{size_kb:.2f} KB",
+                    'timestamp': mtime
+                })
+        
+        # Sort by timestamp (newest first)
+        backups.sort(key=lambda x: x['timestamp'], reverse=True)
+        
+        return backups
+    except Exception as e:
+        logging.error(f"Get backups failed: {e}")
+        return []
+
+def restore_backup(backup_filename):
+    """Restore firewall configuration from backup"""
+    try:
+        backup_path = os.path.join(BACKUP_DIR, backup_filename)
+        
+        if not os.path.exists(backup_path):
+            return False, "Backup file not found"
+        
+        # Validate backup file (must be valid JSON)
+        try:
+            with open(backup_path, 'r') as f:
+                backup_data = json.load(f)
+                
+            # Basic validation
+            if not isinstance(backup_data, dict):
+                return False, "Invalid backup format"
+                
+        except json.JSONDecodeError:
+            return False, "Backup file is corrupted (invalid JSON)"
+        
+        # Create a backup of current state before restoring
+        if os.path.exists(RULES_FILE):
+            current_backup = os.path.join(BACKUP_DIR, f'pre_restore_{datetime.now().strftime("%Y%m%d_%H%M%S")}.json')
+            import shutil
+            shutil.copy(RULES_FILE, current_backup)
+            logging.info(f"Created pre-restore backup: {current_backup}")
+        
+        # Restore the backup
+        import shutil
+        shutil.copy(backup_path, RULES_FILE)
+        logging.info(f"Restored backup from: {backup_filename}")
+        
+        return True, "Backup restored successfully"
+        
+    except Exception as e:
+        logging.error(f"Restore backup failed: {e}")
         return False, str(e)
 
 # ============================================================================
@@ -625,10 +732,12 @@ def change_password():
 @login_required
 def index():
     config = get_rules_from_file()
+    backups = get_available_backups()
     return render_template('index.html', 
                          rules=config.get('rules', []), 
                          chains=config.get('chains', []),
-                         policies=config.get('policies', {}))
+                         policies=config.get('policies', {}),
+                         backups=backups)
 
 @app.route('/connections')
 @login_required
@@ -744,6 +853,56 @@ def set_policy():
         flash(f'Policy for {chain} set to {policy}!', 'success')
     else:
         flash(f'Failed to apply policy: {message}', 'error')
+    
+    return redirect(url_for('index'))
+
+@app.route('/restore_backup', methods=['POST'])
+@login_required
+def restore_backup_route():
+    backup_filename = request.form.get('backup_filename')
+    
+    if not backup_filename:
+        flash('No backup file specified', 'error')
+        return redirect(url_for('index'))
+    
+    # Restore the backup
+    success, message = restore_backup(backup_filename)
+    
+    if success:
+        # Apply the restored configuration
+        apply_success, apply_message = apply_rules_to_iptables()
+        if apply_success:
+            flash(f'✅ Backup restored and applied successfully!', 'success')
+        else:
+            flash(f'⚠️ Backup restored but failed to apply: {apply_message}', 'error')
+    else:
+        flash(f'Failed to restore backup: {message}', 'error')
+    
+    return redirect(url_for('index'))
+
+@app.route('/delete_backup', methods=['POST'])
+@login_required
+def delete_backup_route():
+    backup_filename = request.form.get('backup_filename')
+    
+    if not backup_filename:
+        flash('No backup file specified', 'error')
+        return redirect(url_for('index'))
+    
+    try:
+        backup_path = os.path.join(BACKUP_DIR, backup_filename)
+        
+        if not os.path.exists(backup_path):
+            flash('Backup file not found', 'error')
+            return redirect(url_for('index'))
+        
+        os.remove(backup_path)
+        logging.info(f"Deleted backup: {backup_filename}")
+        flash(f'Backup deleted: {backup_filename}', 'success')
+        
+    except Exception as e:
+        logging.error(f"Delete backup failed: {e}")
+        flash(f'Failed to delete backup: {str(e)}', 'error')
     
     return redirect(url_for('index'))
 
