@@ -60,7 +60,7 @@
     <div class="container mx-auto p-4 md:p-8">
         <div class="mb-6 flex items-center justify-between">
             <div>
-                <h2 class="text-3xl font-bold text-gray-900 mb-2">🌐 Active Network Connections</h2>
+                <h2 class="text-3xl font-bold text-gray-900 mb-2">Active Network Connections</h2>
                 <p class="text-gray-600">Real-time monitoring of network activity</p>
             </div>
             <div class="flex items-center space-x-4">
@@ -222,6 +222,7 @@
     <script>
         let allConnections = [];
         let autoRefreshInterval = null;
+        let connectionTimestamps = new Map(); // Track when connections are first seen
 
         function fetchConnections() {
             const loadingIndicator = document.getElementById('loadingIndicator');
@@ -239,7 +240,32 @@
                 })
                 .then(data => {
                     console.log('Received data:', data);
-                    allConnections = data.connections || [];
+
+                    const now = Date.now();
+                    const rawConnections = data.connections || [];
+                    const currentKeys = new Set();
+
+                    // Enrich connections with discovery timestamp
+                    allConnections = rawConnections.map(conn => {
+                        const key = `${conn.protocol}|${conn.local}|${conn.remote}`;
+                        currentKeys.add(key);
+
+                        if (!connectionTimestamps.has(key)) {
+                            connectionTimestamps.set(key, now);
+                        }
+                        return {...conn, _discoveredAt: connectionTimestamps.get(key)};
+                    });
+
+                    // Cleanup old timestamps
+                    for (const key of connectionTimestamps.keys()) {
+                        if (!currentKeys.has(key)) {
+                            connectionTimestamps.delete(key);
+                        }
+                    }
+
+                    // Sort by discovery time (newest first)
+                    allConnections.sort((a, b) => b._discoveredAt - a._discoveredAt);
+
                     updateStats(allConnections);
                     updateStatsText(data.stats || 'No statistics available');
                     applyFilters();
