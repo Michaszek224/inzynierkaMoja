@@ -1,5 +1,4 @@
-# comments are made by my friend llm
-
+# Comments are made by llm-assistant
 import os
 import json
 import logging
@@ -22,6 +21,7 @@ RULES_FILE = "firewall_rules.json"
 USERS_FILE = "users.json"
 BACKUP_DIR = "backups"
 
+# Ensure backup directory exists
 os.makedirs(BACKUP_DIR, exist_ok=True)
 
 # ============================================================================
@@ -610,6 +610,10 @@ def parse_ss_output(lines):
                     'remote': parts[5] if len(parts) > 5 else '-',
                     'process': ' '.join(parts[6:]) if len(parts) > 6 else '-'
                 }
+                
+                # Enrich connection data
+                conn = enrich_connection_data(conn)
+                
                 connections.append(conn)
             except Exception as e:
                 logging.debug(f"Error parsing ss line {i}: {e}")
@@ -639,10 +643,139 @@ def parse_netstat_output(lines):
                     'state': parts[5] if len(parts) > 5 else 'UNKNOWN',
                     'process': parts[6] if len(parts) > 6 else '-'
                 }
+                
+                # Enrich connection data
+                conn = enrich_connection_data(conn)
+                
                 connections.append(conn)
             except Exception as e:
                 logging.debug(f"Error parsing netstat line {i}: {e}")
     return connections
+
+def enrich_connection_data(conn):
+    """Add human-readable information to connection data"""
+    try:
+        # Parse local address
+        if conn['local'] != '-':
+            local_ip, local_port = parse_address(conn['local'])
+            conn['local_ip'] = local_ip
+            conn['local_port'] = local_port
+            conn['local_service'] = get_service_name(local_port)
+        
+        # Parse remote address
+        if conn['remote'] != '-':
+            remote_ip, remote_port = parse_address(conn['remote'])
+            conn['remote_ip'] = remote_ip
+            conn['remote_port'] = remote_port
+            conn['remote_service'] = get_service_name(remote_port)
+            conn['remote_hostname'] = get_hostname(remote_ip)
+        
+    except Exception as e:
+        logging.debug(f"Error enriching connection: {e}")
+    
+    return conn
+
+def parse_address(addr_str):
+    """Parse IP:PORT from address string"""
+    try:
+        # Handle IPv6 [::1]:80 or IPv4 192.168.1.1:80
+        if addr_str.startswith('['):
+            # IPv6
+            parts = addr_str.rsplit(']:', 1)
+            ip = parts[0][1:]  # Remove [
+            port = parts[1] if len(parts) > 1 else '*'
+        else:
+            # IPv4
+            parts = addr_str.rsplit(':', 1)
+            ip = parts[0]
+            port = parts[1] if len(parts) > 1 else '*'
+        
+        return ip, port
+    except:
+        return addr_str, '*'
+
+def get_service_name(port):
+    """Get common service name for port number"""
+    if port == '*' or port == '-':
+        return None
+    
+    # Common services mapping
+    services = {
+        '20': 'FTP-DATA',
+        '21': 'FTP',
+        '22': 'SSH',
+        '23': 'Telnet',
+        '25': 'SMTP',
+        '53': 'DNS',
+        '80': 'HTTP',
+        '110': 'POP3',
+        '143': 'IMAP',
+        '443': 'HTTPS',
+        '445': 'SMB',
+        '3306': 'MySQL',
+        '3389': 'RDP',
+        '5000': 'Flask',
+        '5432': 'PostgreSQL',
+        '6379': 'Redis',
+        '8080': 'HTTP-Alt',
+        '8443': 'HTTPS-Alt',
+        '27017': 'MongoDB',
+    }
+    
+    return services.get(str(port), None)
+
+# Cache for DNS lookups (avoid repeated lookups)
+_dns_cache = {}
+_dns_cache_time = {}
+DNS_CACHE_TTL = 300  # 5 minutes
+
+def get_hostname(ip):
+    """Perform reverse DNS lookup for IP address (with caching)"""
+    # Skip local/private IPs and special addresses
+    if not ip or ip == '-' or ip == '*':
+        return None
+    
+    if ip.startswith('127.') or ip.startswith('0.0.0.0') or ip == '::1' or ip == '::':
+        return 'localhost'
+    
+    if ip.startswith('192.168.') or ip.startswith('10.') or ip.startswith('172.'):
+        return None  # Private IP, skip DNS lookup
+    
+    # Check cache
+    current_time = time.time()
+    if ip in _dns_cache:
+        cache_age = current_time - _dns_cache_time.get(ip, 0)
+        if cache_age < DNS_CACHE_TTL:
+            return _dns_cache[ip]
+    
+    try:
+        import socket
+        # Set timeout to avoid hanging
+        socket.setdefaulttimeout(0.5)
+        hostname = socket.gethostbyaddr(ip)[0]
+        
+        # Clean up hostname (remove trailing dots)
+        hostname = hostname.rstrip('.')
+        
+        # Shorten long hostnames
+        if len(hostname) > 40:
+            parts = hostname.split('.')
+            if len(parts) > 2:
+                hostname = '.'.join(parts[-2:])  # Keep only last 2 parts (domain.com)
+        
+        # Cache result
+        _dns_cache[ip] = hostname
+        _dns_cache_time[ip] = current_time
+        
+        return hostname
+    except (socket.herror, socket.gaierror, socket.timeout):
+        # Cache negative result (to avoid repeated lookups)
+        _dns_cache[ip] = None
+        _dns_cache_time[ip] = current_time
+        return None
+    except Exception as e:
+        logging.debug(f"Error getting hostname for {ip}: {e}")
+        return None
 
 def get_connection_stats():
     commands_to_try = [
@@ -753,6 +886,20 @@ def api_connections():
         'connections': connections,
         'stats': stats,
         'count': len(connections)
+    })
+
+@app.route('/api/clear_dns_cache', methods=['POST'])
+@login_required
+def clear_dns_cache():
+    """Clear DNS cache"""
+    global _dns_cache, _dns_cache_time
+    cache_size = len(_dns_cache)
+    _dns_cache.clear()
+    _dns_cache_time.clear()
+    logging.info(f"Cleared DNS cache ({cache_size} entries)")
+    return jsonify({
+        'success': True,
+        'cleared': cache_size
     })
 
 @app.route('/add_rule', methods=['GET', 'POST'])

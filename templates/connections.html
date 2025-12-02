@@ -43,7 +43,7 @@
                 </div>
                 <div class="flex items-center space-x-4">
                     <span class="text-sm text-gray-600">
-                        👤 <span class="font-medium">{{ current_user.username }}</span>
+                        <span class="font-medium">{{ current_user.username }}</span>
                     </span>
                     <a href="{{ url_for('change_password') }}" class="text-sm text-gray-600 hover:text-gray-900">
                         Change Password
@@ -60,7 +60,7 @@
     <div class="container mx-auto p-4 md:p-8">
         <div class="mb-6 flex items-center justify-between">
             <div>
-                <h2 class="text-3xl font-bold text-gray-900 mb-2">Active Network Connections</h2>
+                <h2 class="text-3xl font-bold text-gray-900 mb-2">🌐 Active Network Connections</h2>
                 <p class="text-gray-600">Real-time monitoring of network activity</p>
             </div>
             <div class="flex items-center space-x-4">
@@ -70,9 +70,13 @@
                         class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
                     <span class="text-sm text-gray-500">5s</span>
                 </div>
+                <button onclick="clearDnsCache()"
+                    class="px-4 py-2 bg-gray-600 text-white text-sm rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
+                    🗑️ Clear DNS Cache
+                </button>
                 <button onclick="fetchConnections()"
                     class="px-4 py-2 bg-indigo-600 text-white text-sm rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                    Refresh Now
+                    🔄 Refresh Now
                 </button>
             </div>
         </div>
@@ -210,7 +214,7 @@
 
         <!-- Connection Stats -->
         <div class="mt-8 bg-white p-6 rounded-lg shadow-md">
-            <h3 class="text-lg font-semibold mb-4">System Statistics</h3>
+            <h3 class="text-lg font-semibold mb-4">📊 System Statistics</h3>
             <pre id="statsContent" class="text-sm text-gray-700 bg-gray-50 p-4 rounded overflow-x-auto">Loading...</pre>
         </div>
     </div>
@@ -300,6 +304,37 @@
 
             tbody.innerHTML = connections.map(conn => {
                 const stateClass = getStateClass(conn.state);
+
+                // Format local address with service name
+                let localDisplay = escapeHtml(conn.local);
+                if (conn.local_service) {
+                    localDisplay = `<span class="font-mono">${escapeHtml(conn.local_ip || conn.local)}</span>:<span class="text-blue-600 font-semibold">${escapeHtml(conn.local_port)}</span> <span class="text-xs text-gray-500">(${escapeHtml(conn.local_service)})</span>`;
+                }
+
+                // Format remote address with hostname and service
+                let remoteDisplay = escapeHtml(conn.remote);
+                if (conn.remote_hostname || conn.remote_service) {
+                    let parts = [];
+
+                    // Show hostname if available, otherwise IP
+                    if (conn.remote_hostname) {
+                        parts.push(`<span class="text-green-700 font-medium" title="${escapeHtml(conn.remote_ip || conn.remote)}">${escapeHtml(conn.remote_hostname)}</span>`);
+                    } else {
+                        parts.push(`<span class="font-mono">${escapeHtml(conn.remote_ip || conn.remote)}</span>`);
+                    }
+
+                    // Add port
+                    if (conn.remote_port && conn.remote_port !== '*') {
+                        if (conn.remote_service) {
+                            parts.push(`:<span class="text-blue-600 font-semibold">${escapeHtml(conn.remote_port)}</span> <span class="text-xs text-gray-500">(${escapeHtml(conn.remote_service)})</span>`);
+                        } else {
+                            parts.push(`:<span class="text-blue-600">${escapeHtml(conn.remote_port)}</span>`);
+                        }
+                    }
+
+                    remoteDisplay = parts.join('');
+                }
+
                 return `
                     <tr class="connection-row">
                         <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">${escapeHtml(conn.protocol)}</td>
@@ -310,8 +345,8 @@
                         </td>
                         <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">${escapeHtml(conn.recv_q)}</td>
                         <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">${escapeHtml(conn.send_q)}</td>
-                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700 font-mono">${escapeHtml(conn.local)}</td>
-                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700 font-mono">${escapeHtml(conn.remote)}</td>
+                        <td class="px-4 py-3 text-sm text-gray-700">${localDisplay}</td>
+                        <td class="px-4 py-3 text-sm text-gray-700">${remoteDisplay}</td>
                         <td class="px-4 py-3 text-sm text-gray-500 truncate max-w-xs" title="${escapeHtml(conn.process)}">${escapeHtml(conn.process)}</td>
                     </tr>
                 `;
@@ -368,6 +403,28 @@
             setupAutoRefresh();
             fetchConnections();
         });
+
+        function clearDnsCache() {
+            if (confirm('Clear DNS cache? This will force fresh lookups for all hostnames.')) {
+                fetch('/api/clear_dns_cache', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            alert(`✅ Cleared ${data.cleared} DNS cache entries`);
+                            fetchConnections(); // Refresh to get new lookups
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error clearing cache:', error);
+                        alert('❌ Failed to clear DNS cache');
+                    });
+            }
+        }
     </script>
 
 </body>
