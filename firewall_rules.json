@@ -29,8 +29,8 @@
         }
     ],
     "policies": {
-        "INPUT": "DROP",
+        "INPUT": "ACCEPT",
         "OUTPUT": "ACCEPT",
-        "FORWARD": "DROP"
+        "FORWARD": "ACCEPT"
     }
 }
